@@ -19,50 +19,55 @@ namespace Tetris
             InitializeComponent();
             this.SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint, true);
             myTetris = new Testris();
-
         }
 
         Testris myTetris;
-        
+
+        SemaphoreSlim semaphoreSlim = new SemaphoreSlim(1, 1);
+
         private void Form1_Load(object sender, EventArgs e)
         {
-            
+            StartPosition = FormStartPosition.CenterScreen;
+
         }
 
-        private void Form1_KeyDown(object sender, KeyEventArgs e)
+        private async void Form1_KeyDown(object sender, KeyEventArgs e)
         {
             switch(e.KeyCode)
             {
                 case Keys.Up:
-                    myTetris.Rotation();
+                    await semaphoreSlim.WaitAsync();
+                    myTetris.Rotate();
                     myTetris.DrawBoard(this);
+                    semaphoreSlim.Release();
                     break;
                 case Keys.Right:
+                    await semaphoreSlim.WaitAsync();
                     myTetris.MoveRight();
                     myTetris.DrawBoard(this);
+                    semaphoreSlim.Release();
                     break;
                 case Keys.Down:
+                    await semaphoreSlim.WaitAsync();
                     myTetris.MoveDown();
                     myTetris.DrawBoard(this);
+                    semaphoreSlim.Release();
                     break;
                 case Keys.Left:
+                    await semaphoreSlim.WaitAsync();
                     myTetris.MoveLeft();
                     myTetris.DrawBoard(this);
+                    semaphoreSlim.Release();
                     break;
             }
         }
 
-        bool isLoaded = false;
-
-        private void Form1_Paint(object sender, PaintEventArgs e)
+        private async void Form1_Paint(object sender, PaintEventArgs e)
         {
-            if(!isLoaded)
-            {
-                myTetris.StartGame();
-                myTetris.DrawBoard(this);
-                timer1.Enabled = true;
-                isLoaded = true;
-            }
+            myTetris.StartGame();
+            await MoveBlockDownLooplyAsync();
+            myTetris.DrawBoard((Form)this);
+            MessageBox.Show("Game Over.");
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -76,6 +81,25 @@ namespace Tetris
         private void timer1_Tick(object sender, EventArgs e)
         {
             myTetris.DrawBoard(this);
+        }
+
+        private async Task<bool> MoveBlockDownLooplyAsync()
+        {
+            while (true)
+            {
+                await semaphoreSlim.WaitAsync();
+                myTetris.MoveDown();
+                semaphoreSlim.Release();
+                myTetris.DrawBoard((Form)this);
+                
+                if (myTetris.IsGameOver())
+                {
+                    break;
+                }
+                
+                await Task.Delay(150);
+            }
+            return true;
         }
     }
 }
